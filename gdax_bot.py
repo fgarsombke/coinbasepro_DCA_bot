@@ -123,18 +123,11 @@ if __name__ == "__main__":
     aws_region = config.get(config_section, 'AWS_REGION')
 
     # Instantiate public and auth API clients
-    if not args.sandbox_mode:
-        private_client = cbpro.Auth(key, secret, passphrase)
-        messenger = cbpro.Messenger(auth=private_client)
-    else:
-        # Use the sandbox API (requires a different set of API access credentials)
-        private_client = cbpro.Auth(
-            key,
-            secret,
-            passphrase)
-        messenger = cbpro.Messenger(auth=private_client, url=SANDBOX_URL)
-
+    auth = cbpro.Auth(key, secret, passphrase)
+    # Use the sandbox API (requires a different set of API access credentials)
+    messenger = cbpro.Messenger(auth=auth, url=SANDBOX_URL if args.sandbox_mode else None)
     public_client = cbpro.PublicClient(messenger)
+    private_client = cbpro.PrivateClient(messenger)
 
     # Retrieve dict of trading pair info https://docs.pro.coinbase.com/#get-single-product
     try:
@@ -177,8 +170,8 @@ if __name__ == "__main__":
     model = cbpro.PrivateModel()
 
     # get latest price data
-    ticker = public_client.product.ticker(market_name)
-    target_price = ticker['bid'] + (ticker['ask'] - ticker['bid'] / 2)
+    ticker = public_client.products.ticker(market_name)
+    target_price = float(ticker['bid']) + (float(ticker['ask']) - float(ticker['bid']) / 2)
 
     # construct order request
     if amount_currency_is_quote_currency:
@@ -208,6 +201,7 @@ if __name__ == "__main__":
         print(f"{get_timestamp()}: {market_name} Order rejected")
 
     order = request
+    print('order', order)
     order_id = order["id"]
     print(f"order_id: {order_id}")
 
