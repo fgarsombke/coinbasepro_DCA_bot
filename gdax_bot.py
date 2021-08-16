@@ -136,8 +136,17 @@ if __name__ == "__main__":
     public_client = cbpro.PublicClient(messenger)
 
     # Retrieve dict of trading pair info https://docs.pro.coinbase.com/#get-single-product
-    product = public_client.products.get(market_name)
+    try:
+        product = public_client.products.get(market_name)
+    except binascii.Error as e:
+        raise ValueError(f'Did you set your API secrets?') from e
 
+    if product.get('message')=='NotFound':
+        raise KeyError(f"{market_name} not found. Available markets: {[prod['id'] for prod in public_client.products.list()]}"
+                       f""
+                       f"this can be normal if you are running in sandbox mode.")
+
+    print(product)
     assert product['id'] == market_name
     base_currency = product.get("base_currency")
     quote_currency = product.get("quote_currency")
