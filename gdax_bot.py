@@ -186,9 +186,9 @@ if __name__ == "__main__":
     # make order
     response = private_client.orders.post(request)
 
-    print(json.dumps(request, sort_keys=True, indent=4))
+    print(json.dumps(response, sort_keys=True, indent=4))
 
-    if "message" in request:
+    if "message" in response:
         # Something went wrong if there's a 'message' field in response
         # sns.publish(
         #     TopicArn=sns_topic,
@@ -197,12 +197,11 @@ if __name__ == "__main__":
         # )
         exit()
 
-    if request and "status" in request and request["status"] == "rejected":
+    if response and "status" in response and response["status"] == "rejected":
         print(f"{get_timestamp()}: {market_name} Order rejected")
 
-    order = request
-    print('order', order)
-    order_id = order["id"]
+    order = response
+    order_id = response["id"]
     print(f"order_id: {order_id}")
 
     '''
