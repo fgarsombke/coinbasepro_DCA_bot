@@ -7,10 +7,11 @@ import datetime
 import json
 import sys
 import time
+from decimal import Decimal
 
 import cbpro
 
-from decimal import Decimal
+SANDBOX_URL = "https://api-public.sandbox.pro.coinbase.com"
 
 
 def get_timestamp():
@@ -57,7 +58,6 @@ parser.add_argument('amount',
 parser.add_argument('amount_currency',
                     help="The currency the amount is denominated in")
 
-
 # Additional options
 parser.add_argument('-sandbox',
                     action="store_true",
@@ -82,8 +82,6 @@ parser.add_argument('-c', '--config',
                     default="settings.conf",
                     dest="config_file",
                     help="Override default config file location")
-
-
 
 if __name__ == "__main__":
     args = parser.parse_args()
@@ -125,36 +123,34 @@ if __name__ == "__main__":
 
     # Instantiate public and auth API clients
     if not args.sandbox_mode:
-        auth_client = cbpro.AuthenticatedClient(key, secret, passphrase)
+        auth_client = cbpro.Auth(key, secret, passphrase)
+        messenger = cbpro.Messenger(auth=auth_client)
     else:
         # Use the sandbox API (requires a different set of API access credentials)
-        auth_client = cbpro.AuthenticatedClient(
+        auth_client = cbpro.Auth(
             key,
             secret,
-            passphrase,
-            api_url="https://api-public.sandbox.pro.coinbase.com")
+            passphrase)
+        messenger = cbpro.Messenger(auth=auth_client, url=SANDBOX_URL)
 
-    public_client = cbpro.PublicClient()
+    public_client = cbpro.PublicClient(messenger)
 
-    # Retrieve dict list of all trading pairs
-    products = public_client.get_products()
-    base_min_size = None
-    base_increment = None
-    quote_increment = None
-    for product in products:
-        if product.get("id") == market_name:
-            base_currency = product.get("base_currency")
-            quote_currency = product.get("quote_currency")
-            base_min_size = Decimal(product.get("base_min_size")).normalize()
-            base_increment = Decimal(product.get("base_increment")).normalize()
-            quote_increment = Decimal(product.get("quote_increment")).normalize()
-            if amount_currency == product.get("quote_currency"):
-                amount_currency_is_quote_currency = True
-            elif amount_currency == product.get("base_currency"):
-                amount_currency_is_quote_currency = False
-            else:
-                raise Exception(f"amount_currency {amount_currency} not in market {market_name}")
-            print(json.dumps(product, indent=2))
+    # Retrieve dict of trading pair info https://docs.pro.coinbase.com/#get-single-product
+    product = public_client.products.get(market_name)
+
+    assert product['id'] == market_name
+    base_currency = product.get("base_currency")
+    quote_currency = product.get("quote_currency")
+    base_min_size = Decimal(product.get("base_min_size")).normalize()
+    base_increment = Decimal(product.get("base_increment")).normalize()
+    quote_increment = Decimal(product.get("quote_increment")).normalize()
+    if amount_currency == product.get("quote_currency"):
+        amount_currency_is_quote_currency = True
+    elif amount_currency == product.get("base_currency"):
+        amount_currency_is_quote_currency = False
+    else:
+        raise Exception(f"amount_currency {amount_currency} not in market {market_name}")
+    print(json.dumps(product, indent=2))
 
     print(f"base_min_size: {base_min_size}")
     print(f"quote_increment: {quote_increment}")
@@ -167,22 +163,20 @@ if __name__ == "__main__":
     #     region_name=aws_region
     # )
 
+    model = cbpro.PrivateModel()
+
     if amount_currency_is_quote_currency:
-        result = auth_client.place_market_order(
-            product_id=market_name,
-            side=order_side,
-            funds=float(amount.quantize(quote_increment))
-        )
+        request = model.orders.market(side=order_side, product_id=market_name,
+                                      funds=float(amount.quantize(quote_increment))
+                                      )
     else:
-        result = auth_client.place_market_order(
-            product_id=market_name,
-            side=order_side,
-            size=float(amount.quantize(base_increment))
-        )
+        request = model.orders.market(side=order_side, product_id=market_name,
+                                      size=float(amount.quantize(base_increment))
+                                      )
 
-    print(json.dumps(result, sort_keys=True, indent=4))
+    print(json.dumps(request, sort_keys=True, indent=4))
 
-    if "message" in result:
+    if "message" in request:
         # Something went wrong if there's a 'message' field in response
         # sns.publish(
         #     TopicArn=sns_topic,
@@ -191,10 +185,10 @@ if __name__ == "__main__":
         # )
         exit()
 
-    if result and "status" in result and result["status"] == "rejected":
+    if request and "status" in request and request["status"] == "rejected":
         print(f"{get_timestamp()}: {market_name} Order rejected")
 
-    order = result
+    order = request
     order_id = order["id"]
     print(f"order_id: {order_id}")
 
@@ -213,10 +207,11 @@ if __name__ == "__main__":
             # )
             exit()
 
-        print(f"{get_timestamp()}: Order {order_id} still {order['status']}. Sleeping for {wait_time} (total {total_wait_time})")
+        print(
+            f"{get_timestamp()}: Order {order_id} still {order['status']}. Sleeping for {wait_time} (total {total_wait_time})")
         time.sleep(wait_time)
         total_wait_time += wait_time
-        order = auth_client.get_order(order_id)
+        order = auth_client.orders.get(order_id)
         # print(json.dumps(order, sort_keys=True, indent=4))
 
         if "message" in order and order["message"] == "NotFound":
@@ -231,7 +226,7 @@ if __name__ == "__main__":
     # Order status is no longer pending!
     print(json.dumps(order, indent=2))
 
-    market_price = (Decimal(order["executed_value"])/Decimal(order["filled_size"])).quantize(quote_increment)
+    market_price = (Decimal(order["executed_value"]) / Decimal(order["filled_size"])).quantize(quote_increment)
 
     subject = f"{market_name} {order_side} order of {amount} {amount_currency} {order['status']} @ {market_price} {quote_currency}"
     print(subject)
@@ -240,4 +235,3 @@ if __name__ == "__main__":
     #     Subject=subject,
     #     Message=json.dumps(order, sort_keys=True, indent=4)
     # )
-
