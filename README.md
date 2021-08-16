@@ -1,4 +1,4 @@
-# gdax_bot
+# dca_bot
 A basic Coinbase Pro buying bot that completes trades in any of their available market pairings
 
 Relies on [gdax-python](https://github.com/danpaquin/gdax-python). Props to [danpaquin](https://github.com/danpaquin) and thanks!
@@ -45,10 +45,10 @@ If the crypto price keeps increasing, eventually your schedule will run up again
 
 ## Technical Details
 ### Basic approach
-gdax_bot pulls the current bid and ask prices, averages the two to set our order's price, then submits it as a limit order.
+dca_bot pulls the current bid and ask prices, averages the two to set our order's price, then submits it as a limit order.
 
 ### Making a valid limit order
-Buy orders will be rejected if they are at or above the lowest sell order (think: too far right on the order book) (see: https://stackoverflow.com/a/47447663) and vice-versa for sells. When the price is plummeting this is likely to happen. In this case gdax_bot will pause for a minute and then grab the latest price and re-place the order. It will currently attempt this 100 times before it gives up.
+Buy orders will be rejected if they are at or above the lowest sell order (think: too far right on the order book) (see: https://stackoverflow.com/a/47447663) and vice-versa for sells. When the price is plummeting this is likely to happen. In this case dca_bot will pause for a minute and then grab the latest price and re-place the order. It will currently attempt this 100 times before it gives up.
 
 _*Longer pauses are probably advantageous--if the price is crashing, you don't want to be rushing in._
 
@@ -95,17 +95,17 @@ Run against the Coinbase Pro sandbox by including the ```-sandbox``` flag. Remem
 
 Activate your virtualenv and try a basic buy of $100 USD worth of BTC:
 ```
-python gdax_bot.py BTC-USD BUY 100 USD -sandbox -c ../settings-local.conf
+python dca_bot.py BTC-USD BUY 100 USD -sandbox -c ../settings-local.conf
 ```
 
 Check the sandbox UI and you'll see your limit order listed. Unfortunately your order probably won't fill unless there's other activity in the sandbox.
 
 
 ### Usage
-Run ```python gdax_bot.py -h``` for usage information:
+Run ```python dca_bot.py -h``` for usage information:
 
 ```
-usage: gdax_bot.py [-h] [-sandbox] [-warn_after WARN_AFTER] [-j]
+usage: dca_bot.py [-h] [-sandbox] [-warn_after WARN_AFTER] [-j]
                    [-c CONFIG_FILE]
                    market_name {BUY,SELL} amount amount_currency
 
@@ -140,26 +140,26 @@ This is meant to be run as a crontab to make regular purchases on a set schedule
 
 $50 USD of ETH every Monday at 17:23:
 ```
-23 17 * * 1 /your/virtualenv/path/bin/python -u /your/gdax_bot/path/src/gdax_bot.py -j ETH-USD BUY 50.00 USD -c /your/settings/path/your_settings_file.conf >> /your/cron/log/path/cron.log
+23 17 * * 1 /your/virtualenv/path/bin/python -u /your/dca_bot/path/src/dca_bot.py -j ETH-USD BUY 50.00 USD -c /your/settings/path/your_settings_file.conf >> /your/cron/log/path/cron.log
 ```
 *The ```-u``` option makes python output ```stdout``` and ```stderr``` unbuffered so that you can watch the progress in real time by running ```tail -f cron.log```.*
 
 €75 EUR of BTC every other day at 14:00:
 ```
-00 14 */2 * * /your/virtualenv/path/bin/python -u /your/gdax_bot/path/src/gdax_bot.py -j BTC-EUR BUY 75.00 EUR -c /your/settings/path/your_settings_file.conf >> /your/cron/log/path/cron.log
+00 14 */2 * * /your/virtualenv/path/bin/python -u /your/dca_bot/path/src/dca_bot.py -j BTC-EUR BUY 75.00 EUR -c /your/settings/path/your_settings_file.conf >> /your/cron/log/path/cron.log
 ```
 
 £5 GBP of LTC every day on every third hour at the 38th minute (i.e. 00:38, 03:38, 06:38, 09:38, 12:38, 15:38, 18:38, 21:38):
 ```
-38 */3 * * * /your/virtualenv/path/bin/python -u /your/gdax_bot/path/src/gdax_bot.py -j LTC-GBP BUY 5.00 GBP -c /your/settings/path/your_settings_file.conf >> /your/cron/log/path/cron.log
+38 */3 * * * /your/virtualenv/path/bin/python -u /your/dca_bot/path/src/dca_bot.py -j LTC-GBP BUY 5.00 GBP -c /your/settings/path/your_settings_file.conf >> /your/cron/log/path/cron.log
 ```
 
 
 ### Unfilled orders will happen
 The volatility may quickly carry the market away from you. Here we see a bunch of unfilled orders that are well below the current market price of $887.86:
-![alt text](https://github.com/kdmukai/gdax_bot/blob/master/docs/img/gdax_unfilled_orders.png "Unfilled gdax_bot orders")
+![alt text](https://github.com/kdmukai/dca_bot/blob/master/docs/img/gdax_unfilled_orders.png "Unfilled dca_bot orders")
 
-The gdax_bot will keep checking on the status of the order for up to an hour, after which it will report it as OPEN/UNFILLED. Hopefully the market will cool down again and return to your order's price, at which point it will fill (though gdax_bot will not send a notification). You can also manually cancel the order to free up the reserved fiat again. 
+The dca_bot will keep checking on the status of the order for up to an hour, after which it will report it as OPEN/UNFILLED. Hopefully the market will cool down again and return to your order's price, at which point it will fill (though dca_bot will not send a notification). You can also manually cancel the order to free up the reserved fiat again. 
 
 I would recommend patience and let the unfilled order ride for a few hours or days. With micro dollar cost averaging it doesn't really matter if you miss a few buy orders.
 
