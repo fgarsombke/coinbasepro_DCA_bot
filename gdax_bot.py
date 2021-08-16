@@ -2,6 +2,7 @@
 
 import argparse
 # import boto3
+import binascii
 import configparser
 import datetime
 import json
@@ -123,15 +124,15 @@ if __name__ == "__main__":
 
     # Instantiate public and auth API clients
     if not args.sandbox_mode:
-        auth_client = cbpro.Auth(key, secret, passphrase)
-        messenger = cbpro.Messenger(auth=auth_client)
+        private_client = cbpro.Auth(key, secret, passphrase)
+        messenger = cbpro.Messenger(auth=private_client)
     else:
         # Use the sandbox API (requires a different set of API access credentials)
-        auth_client = cbpro.Auth(
+        private_client = cbpro.Auth(
             key,
             secret,
             passphrase)
-        messenger = cbpro.Messenger(auth=auth_client, url=SANDBOX_URL)
+        messenger = cbpro.Messenger(auth=private_client, url=SANDBOX_URL)
 
     public_client = cbpro.PublicClient(messenger)
 
@@ -141,10 +142,11 @@ if __name__ == "__main__":
     except binascii.Error as e:
         raise ValueError(f'Did you set your API secrets?') from e
 
-    if product.get('message')=='NotFound':
-        raise KeyError(f"{market_name} not found. Available markets: {[prod['id'] for prod in public_client.products.list()]}"
-                       f""
-                       f"this can be normal if you are running in sandbox mode.")
+    if product.get('message') == 'NotFound':
+        raise KeyError(
+            f"{market_name} not found. Available markets: {[prod['id'] for prod in public_client.products.list()]}"
+            f""
+            f"this can be normal if you are running in sandbox mode.")
 
     print(product)
     assert product['id'] == market_name
@@ -174,6 +176,11 @@ if __name__ == "__main__":
 
     model = cbpro.PrivateModel()
 
+    # get latest price data
+    ticker = public_client.product.ticker(market_name)
+    target_price = ticker['bid'] + (ticker['ask'] - ticker['bid'] / 2)
+
+    # construct order request
     if amount_currency_is_quote_currency:
         request = model.orders.market(side=order_side, product_id=market_name,
                                       funds=float(amount.quantize(quote_increment))
@@ -182,6 +189,9 @@ if __name__ == "__main__":
         request = model.orders.market(side=order_side, product_id=market_name,
                                       size=float(amount.quantize(base_increment))
                                       )
+
+    # make order
+    response = private_client.orders.post(request)
 
     print(json.dumps(request, sort_keys=True, indent=4))
 
@@ -220,7 +230,7 @@ if __name__ == "__main__":
             f"{get_timestamp()}: Order {order_id} still {order['status']}. Sleeping for {wait_time} (total {total_wait_time})")
         time.sleep(wait_time)
         total_wait_time += wait_time
-        order = auth_client.orders.get(order_id)
+        order = private_client.orders.get(order_id)
         # print(json.dumps(order, sort_keys=True, indent=4))
 
         if "message" in order and order["message"] == "NotFound":
