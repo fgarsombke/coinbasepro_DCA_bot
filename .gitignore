@@ -2,6 +2,6 @@
 cron*
 
 settings.conf
-settingsl.conf
+settings.conf
 
 *.bat
