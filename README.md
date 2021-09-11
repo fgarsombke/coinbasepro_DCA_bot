@@ -95,14 +95,14 @@ Run against the Coinbase Pro sandbox by including the ```-sandbox``` flag. Remem
 
 Activate your virtualenv and try a basic buy of $100 USD worth of BTC:
 ```
-python dca_bot.py BTC-USD BUY 100 USD -sandbox -c ../settings-local.conf
+python3 dca_bot.py BTC-USD BUY 100 USD -sandbox -c ../settings-local.conf
 ```
 
 Check the sandbox UI and you'll see your limit order listed. Unfortunately your order probably won't fill unless there's other activity in the sandbox.
 
 
 ### Usage
-Run ```python dca_bot.py -h``` for usage information:
+Run ```python3 dca_bot.py -h``` for usage information:
 
 ```
 usage: dca_bot.py [-h] [-sandbox] [-warn_after WARN_AFTER] [-j]
