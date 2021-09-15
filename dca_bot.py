@@ -164,12 +164,13 @@ if __name__ == "__main__":
     print(f"quote_increment: {quote_increment}")
 
     # Prep boto SNS client for email notifications
-    sns = boto3.client(
+    if sns_topic:
+      sns = boto3.client(
          "sns",
          aws_access_key_id=aws_access_key_id,
          aws_secret_access_key=aws_secret_access_key,
          region_name=aws_region
-    )
+      )
 
     model = cbpro.PrivateModel()
 
@@ -194,11 +195,12 @@ if __name__ == "__main__":
 
     if "message" in response:
         # Something went wrong if there's a 'message' field in response
-        sns.publish(
+        if sns:
+          sns.publish(
              TargetArn=sns_topic,
              Subject=f"Could not place {market_name} {order_side} order",
              Message=json.dumps(result, sort_keys=True, indent=4)
-        )
+          )
         exit()
 
     if response and "status" in response and response["status"] == "rejected":
@@ -216,11 +218,12 @@ if __name__ == "__main__":
     while "status" in order and \
             (order["status"] == "pending" or order["status"] == "open"):
         if total_wait_time > warn_after:
-            sns.publish(
+            if sns:
+              sns.publish(
                  TargetArn=sns_topic,
                  Subject=f"{market_name} {order_side} order of {amount} {amount_currency} OPEN/UNFILLED",
                  Message=json.dumps(order, sort_keys=True, indent=4)
-            )
+              )
             exit()
 
         print(
@@ -232,11 +235,12 @@ if __name__ == "__main__":
 
         if "message" in order and order["message"] == "NotFound":
             # Most likely the order was manually cancelled in the UI
-            sns.publish(
+            if sns:
+              sns.publish(
                  TargetArn=sns_topic,
                  Subject=f"{market_name} {order_side} order of {amount} {amount_currency} CANCELLED",
                  Message=json.dumps(result, sort_keys=True, indent=4)
-            )
+              )
             exit()
 
     # Order status is no longer pending!
@@ -246,14 +250,15 @@ if __name__ == "__main__":
 
     subject = f"{market_name} {order_side} order of {amount} {amount_currency} {order['status']} @ {market_price} {quote_currency}"
     print(subject)
-    try:
-      sns.publish(
+    if sns:
+      try:
+        sns.publish(
          TargetArn=sns_topic,
          Subject=subject,
          Message=json.dumps(order, sort_keys=True, indent=4)
-      )
-    except botocore.exceptions.ClientError as e:
-      print("Unexpected error: %s" % e)
+        )
+      except botocore.exceptions.ClientError as e:
+        print("Unexpected error: %s" % e)
    
     if google_spreadsheet_key:
       print('writing to google spreadsheet') 
