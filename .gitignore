@@ -4,5 +4,6 @@ cron*
 settings.conf
 settings.local.conf
 settings-local.conf
+client_secret.json
 
 *.bat

@@ -60,9 +60,11 @@ https://www.coinbase.com/join/59384a753bfa9c00d764ac76
 #### Create a virtualenv
 There's plenty of info elsewhere for the hows and whys.
 
-#### Install requirements
+#### Install pip requirements
 ```
 pip install -r requirements.txt
+pip install boto3
+pip install gspread oauth2client
 ```
 
 #### Create Coinbase Pro API key

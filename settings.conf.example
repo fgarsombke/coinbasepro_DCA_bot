@@ -6,7 +6,7 @@ SNS_TOPIC = your_aws_sns_topic_arn
 AWS_ACCESS_KEY_ID = your_aws_access_key_id
 AWS_SECRET_ACCESS_KEY = your_aws_secret_access_key
 AWS_REGION = us-east-1
-
+GOOGLE_SPREADSHEET_KEY=key_for_spreadsheet
 
 [production]
 PASSPHRASE = your_gdax_api_passphrase
@@ -16,3 +16,4 @@ SNS_TOPIC = your_aws_sns_topic_arn
 AWS_ACCESS_KEY_ID = your_aws_access_key_id
 AWS_SECRET_ACCESS_KEY = your_aws_secret_access_key
 AWS_REGION = us-east-1
+GOOGLE_SPREADSHEET_KEY=key_for_spreadsheet

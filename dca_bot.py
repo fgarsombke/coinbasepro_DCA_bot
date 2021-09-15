@@ -12,6 +12,8 @@ import time
 from decimal import Decimal
 
 import cbpro
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
 SANDBOX_URL = "https://api-public.sandbox.pro.coinbase.com"
 
@@ -122,6 +124,7 @@ if __name__ == "__main__":
     aws_secret_access_key = config.get(config_section, 'AWS_SECRET_ACCESS_KEY')
     sns_topic = config.get(config_section, 'SNS_TOPIC')
     aws_region = config.get(config_section, 'AWS_REGION')
+    google_spreadsheet_key = config.get(config_section, 'GOOGLE_SPREADSHEET_KEY')
 
     # Instantiate public and auth API clients
     auth = cbpro.Auth(key, secret, passphrase)
@@ -251,3 +254,19 @@ if __name__ == "__main__":
       )
     except botocore.exceptions.ClientError as e:
       print("Unexpected error: %s" % e)
+   
+    if google_spreadsheet_key:
+      print('writing to google spreadsheet') 
+      # use creds to create a client to interact with the Google Drive API
+      DEFAULT_SCOPES = [
+    'https://www.googleapis.com/auth/spreadsheets',
+    'https://www.googleapis.com/auth/drive',
+      ]
+      creds = ServiceAccountCredentials.from_json_keyfile_name('client_secret.json', DEFAULT_SCOPES)
+      client = gspread.authorize(creds)
+
+      # Find a workbook by name and open the first sheet
+      # Make sure you use the right name here.
+      sheet = client.open_by_key(google_spreadsheet_key).sheet1
+      row = [order["product_id"],order["specified_funds"],order["funds"],order["fill_fees"],order["filled_size"],market_price,order["side"],order["done_reason"],order["status"],order["created_at"]]
+      sheet.append_row(row)
