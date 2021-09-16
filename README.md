@@ -14,12 +14,7 @@ While I believe strongly in dollar cost averaging, the crypto world is so volati
 
 ## Technical Details
 ### Basic approach
-dca_bot pulls the current bid and ask prices, averages the two to set our order's price, then submits it as a limit order.
-
-### Making a valid limit order
-Buy orders will be rejected if they are at or above the lowest sell order (think: too far right on the order book) (see: https://stackoverflow.com/a/47447663) and vice-versa for sells. When the price is plummeting this is likely to happen. In this case dca_bot will pause for a minute and then grab the latest price and re-place the order. It will currently attempt this 100 times before it gives up.
-
-_*Longer pauses are probably advantageous--if the price is crashing, you don't want to be rushing in._
+dca_bot submits a market price order for every coin pair.
 
 ### Setup
 #### Create a Coinbase account
@@ -114,7 +109,6 @@ optional arguments:
   -c CONFIG_FILE, --config CONFIG_FILE
                         Override default config file location
 ```
-
 ### Scheduling your recurring buys
 This is meant to be run as a crontab to make regular purchases on a set schedule. Here are some example cron jobs:
 
