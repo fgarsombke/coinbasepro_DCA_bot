@@ -41,6 +41,9 @@ Find and follow existing guides for creating an API key. Only grant the "Trade" 
 
 While you're in the sandbox UI, fund your fiat account by transferring from the absurd fake balance that sits in the linked Coinbase account (remember, this is all just fake test data; no real money or crypto goes through the sandbox).
 
+#### Customize settings
+Update `settings.conf.example` with your API key info in the "sandbox" section. I recommend saving your version as `settings-local.conf` as that is already in the `.gitignore` so you don't have to worry about committing your sensitive info to your forked repo.
+
 #### (Optional) Create an AWS Simple Notification System topic
 This is out of scope for this document, but generate a set of AWS access keys and a new SNS topic to enable the bot to send email reports.
 
@@ -53,27 +56,31 @@ AWS_SECRET_ACCESS_KEY = secret_key
 AWS_REGION = us-east-1
 ```
 #### (Optional) Create a Google Spreadsheet
+To programmatically access your spreadsheet, you’ll need to create a service account and OAuth2 credentials from the Google API Console.
+* Copy this spreadsheet template to your own Google Drive https://docs.google.com/spreadsheets/d/1wWHhDnKePdSdRBt1qGvKayIgTYZKaf1h3W5R5Kq6drQ/edit?usp=sharing
+* Go to the Google APIs Console (https://console.developers.google.com/)
+* Create a new project
+  * Enable the Google Drive API and Google Sheets API
+  * Create Credentials --> Service Account
+    * Name the service account and grant it a Project Role of Editor
+    * Add Key --> Create New Key
+    * Download the JSON file and name it client_secret.json and put into your working script directory 
+  * Find the client_email inside client_secret.json file. In your spreadsheet, click the "Share" button at the top right and share to the client_email with Editor privledges
 
-Set these values in the `settings-local.conf` file if the Google spreadsheet was created
-
+* Set this value in the `settings-local.conf` with the key of the Google spreadsheet that was created
 ```
 GOOGLE_SPREADSHEET_KEY=key_of_google_spreadsheet (i.e. 1KArbyA-s2IJwxP6zqazZ3IzkLNFHBFzek9HLziB6ITw)
 ```
 
-#### Customize settings
-Update ```settings.conf``` with your API key info in the "sandbox" section. I recommend saving your version as ```settings-local.conf``` as that is already in the ```.gitignore``` so you don't have to worry about committing your sensitive info to your forked repo.
-
-If you have an AWS SNS topic, enter the access keys and SNS topic.
-
 #### Try a basic test run
-Run against the Coinbase Pro sandbox by including the ```-sandbox``` flag. Remember that the sandbox is just test data. The sandbox only supports BTC trading.
+Run against the Coinbase Pro sandbox by including the `-sandbox` flag. Remember that the sandbox is just test data. The sandbox only supports BTC trading.
 
-Activate your virtualenv and try a basic buy of $100 USD worth of BTC:
+Try a basic buy of $100 USD worth of BTC:
 ```
-python3 dca_bot.py BTC-USD BUY 100 USD -sandbox -c ../settings-local.conf
+python3 dca_bot.py BTC-USD BUY 100 USD -sandbox -c settings-local.conf
 ```
 
-Check the sandbox UI and you'll see your limit order listed. Unfortunately your order probably won't fill unless there's other activity in the sandbox.
+Check the sandbox UI and you'll see your order listed.
 
 ### Usage
 Run ```python3 dca_bot.py -h``` for usage information:
@@ -117,18 +124,10 @@ $50 USD of ETH every Monday at 17:23:
 ```
 *The ```-u``` option makes python output ```stdout``` and ```stderr``` unbuffered so that you can watch the progress in real time by running ```tail -f cron.log```.*
 
-### Unfilled orders will happen
-The volatility may quickly carry the market away from you. Here we see a bunch of unfilled orders that are well below the current market price of $887.86:
-![alt text](https://github.com/kdmukai/dca_bot/blob/master/docs/img/gdax_unfilled_orders.png "Unfilled dca_bot orders")
-
-The dca_bot will keep checking on the status of the order for up to an hour, after which it will report it as OPEN/UNFILLED. Hopefully the market will cool down again and return to your order's price, at which point it will fill (though dca_bot will not send a notification). You can also manually cancel the order to free up the reserved fiat again. 
-
-I would recommend patience and let the unfilled order ride for a few hours or days. With micro dollar cost averaging it doesn't really matter if you miss a few buy orders.
-
-#### Mac notes
+#### Cron examples
 Edit the crontab:
 ```
-env EDITOR=nano crontab -e
+crontab -e
 ```
 
 View the current crontab:
