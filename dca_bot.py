@@ -273,5 +273,6 @@ if __name__ == "__main__":
       # Find a workbook by name and open the first sheet
       # Make sure you use the right name here.
       sheet = client.open_by_key(google_spreadsheet_key).sheet1
-      row = [order["product_id"],order["specified_funds"],order["funds"],order["fill_fees"],order["filled_size"],market_price,order["side"],order["done_reason"],order["status"],order["created_at"]]
-      sheet.append_row(row)
+      row = [order["product_id"],order["specified_funds"],order["funds"],order["fill_fees"],order["filled_size"],market_price,order["side"],order["done_reason"],config_section,order["status"],order["created_at"]]
+      append_res = sheet.append_row(row)
+      print(append_res)
