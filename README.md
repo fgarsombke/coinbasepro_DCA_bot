@@ -108,13 +108,15 @@ optional arguments:
   -j, --job             Suppresses user confirmation prompt
   -c CONFIG_FILE, --config CONFIG_FILE
                         Override default config file location
+  -s Google spreadsheet client secret file, --secret
+                        Override default google spreadsheet client secret file location                        
 ```
 ### Scheduling your recurring buys
 This is meant to be run as a crontab to make regular purchases on a set schedule. Here are some example cron jobs:
 
 $50 USD of ETH every Monday at 17:23:
 ```
-23 17 * * 1 /your/virtualenv/path/bin/python -u /your/dca_bot/path/src/dca_bot.py -j ETH-USD BUY 50.00 USD -c /your/settings/path/your_settings_file.conf >> /your/cron/log/path/cron.log
+23 17 * * 1 /your/virtualenv/path/bin/python -u /your/dca_bot/path/src/dca_bot.py -j ETH-USD BUY 50.00 USD -c /your/settings/path/your_settings_file.conf -s /your/settings/path/client_secret.json (optional) >> /your/cron/log/path/cron.log
 ```
 *The ```-u``` option makes python output ```stdout``` and ```stderr``` unbuffered so that you can watch the progress in real time by running ```tail -f cron.log```.*
 
