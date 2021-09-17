@@ -87,6 +87,11 @@ parser.add_argument('-c', '--config',
                     dest="config_file",
                     help="Override default config file location")
 
+parser.add_argument('-s', '--secret',
+                    default="client_secret.json",
+                    dest="google_sheet_client_secret",
+                    help="Override default google sheet client secret location")
+
 if __name__ == "__main__":
     args = parser.parse_args()
     print(f"{get_timestamp()}: STARTED: {args}")
@@ -267,12 +272,15 @@ if __name__ == "__main__":
     'https://www.googleapis.com/auth/spreadsheets',
     'https://www.googleapis.com/auth/drive',
       ]
-      creds = ServiceAccountCredentials.from_json_keyfile_name('client_secret.json', DEFAULT_SCOPES)
-      client = gspread.authorize(creds)
+      try: 
+        creds = ServiceAccountCredentials.from_json_keyfile_name(args.google_sheet_client_secret, DEFAULT_SCOPES)
+        client = gspread.authorize(creds)
 
-      # Find a workbook by name and open the first sheet
-      # Make sure you use the right name here.
-      sheet = client.open_by_key(google_spreadsheet_key).sheet1
-      row = [order["product_id"],order["specified_funds"],order["funds"],order["fill_fees"],order["filled_size"],market_price,order["side"],order["done_reason"],config_section,order["status"],order["created_at"]]
-      append_res = sheet.append_row(row)
-      print(append_res)
+        # Find a workbook by name and open the first sheet
+        # Make sure you use the right name here.
+        sheet = client.open_by_key(google_spreadsheet_key).sheet1
+        row = [order["product_id"],order["specified_funds"],order["funds"],order["fill_fees"],order["filled_size"],market_price,order["side"],order["done_reason"],config_section,order["status"],order["created_at"]]
+        append_res = sheet.append_row(row)
+        print(append_res)
+      except Exception as e:
+        print("Unexpected error: %s" % e)
