@@ -187,10 +187,6 @@ if __name__ == "__main__":
       )
 
     model = cbpro.PrivateModel()
-    # get latest price data
-    ticker = public_client.products.ticker(market_name)
-    target_price = float(ticker['bid']) + (float(ticker['ask']) - float(ticker['bid']) / 2)
-
     # construct order request
     if amount_currency_is_quote_currency:
         request = model.orders.market(side=order_side, product_id=market_name,
