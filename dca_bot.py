@@ -15,20 +15,29 @@ import cbpro
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
+DEFAULT_ROWS = "1000"
+DEFAULT_COLUMNS = "11"
+DONE_REASON_FILLED = "filled"
+
 SANDBOX_URL = "https://api-public.sandbox.pro.coinbase.com"
 
-
 def get_timestamp():
-    ts = time.time()
-    return datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+  ts = time.time()
+  return datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 
+def add_worksheet(client, google_spreadsheet_key, worksheet_name):
+  # add the worksheet
+  sheet = client.open_by_key(google_spreadsheet_key).add_worksheet(title=worksheet_name, rows=DEFAULT_ROWS, cols=DEFAULT_COLUMNS)
+  # add the header row
+  row = ["product_id","specified_funds","funds","fill_fees","filled_size","market_price","side","done_reason","environment","status","created_at"]
+  append_res = sheet.append_row(row)
+  print(append_res)
+  # Freeze the first rpw
+  sheet.freeze(1);
+  return sheet
 
 """
     Basic Coinbase Pro DCA buy/sell bot that executes a market order.
-    * CB Pro does not incentivize maker vs taker trading unless you trade over $50k in
-        a 30 day period (0.25% taker, 0.15% maker). Current fees are 0.50% if you make
-        less than $10k worth of trades over the last 30 days. Drops to 0.35% if you're
-        above $10k but below $50k in trades.
     * Market orders can be issued for as little as $5 of value versus limit orders which
         must be 0.001 BTC (e.g. $50 min if btc is at $50k). BTC-denominated market
         orders must be at least 0.0001 BTC.
@@ -178,7 +187,6 @@ if __name__ == "__main__":
       )
 
     model = cbpro.PrivateModel()
-
     # get latest price data
     ticker = public_client.products.ticker(market_name)
     target_price = float(ticker['bid']) + (float(ticker['ask']) - float(ticker['bid']) / 2)
@@ -250,6 +258,20 @@ if __name__ == "__main__":
 
     # Order status is no longer pending!
     print(json.dumps(order, indent=2))
+    done_reason = order["done_reason"]
+    if done_reason != DONE_REASON_FILLED:
+      print('Coinbase Pro order failed due to done reason ' + done_reason)
+      # send email and fast fail
+      if sns:
+       try:
+        sns.publish(
+           TargetArn=sns_topic,
+           Subject='Coinbase Pro order failed due to done reason ' + done_reason,
+           Message=json.dumps(order, sort_keys=True, indent=4)
+          )
+       except botocore.exceptions.ClientError as e:
+         print("Unexpected error: %s" % e)
+      exit()
 
     market_price = (Decimal(order["executed_value"]) / Decimal(order["filled_size"])).quantize(quote_increment)
 
@@ -275,10 +297,24 @@ if __name__ == "__main__":
       try: 
         creds = ServiceAccountCredentials.from_json_keyfile_name(args.google_sheet_client_secret, DEFAULT_SCOPES)
         client = gspread.authorize(creds)
+        # find all of the worksheets and make sure there is one with the market_name (buy/pair)
+        # if we find one append, if we do not then create a new worksheet with the buy/pair
+        worksheet_list = client.open_by_key(google_spreadsheet_key).worksheets()
+        # iterate through the worksheets and try to find market_name
+        match_found = False
+        if len(worksheet_list):
+          for worksheet in worksheet_list:
+            print(f"worksheet.title {worksheet.title}, market_name {market_name}")
+            if worksheet.title == market_name:
+              match_found = True
 
-        # Find a workbook by name and open the first sheet
-        # Make sure you use the right name here.
-        sheet = client.open_by_key(google_spreadsheet_key).sheet1
+        if match_found:
+          print('worksheet match found, appending row')
+          sheet = worksheet
+        else:
+          print('worksheet match not found, creating worksheet')
+          sheet = add_worksheet(client,google_spreadsheet_key, market_name)
+
         row = [order["product_id"],order["specified_funds"],order["funds"],order["fill_fees"],order["filled_size"],market_price,order["side"],order["done_reason"],config_section,order["status"],order["created_at"]]
         append_res = sheet.append_row(row)
         print(append_res)

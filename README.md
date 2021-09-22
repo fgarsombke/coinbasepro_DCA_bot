@@ -52,7 +52,7 @@ AWS_REGION = us-east-1
 ```
 #### (Optional) Create a Google Spreadsheet
 To programmatically access your spreadsheet, you’ll need to create a service account and OAuth2 credentials from the Google API Console.
-* Copy this spreadsheet template to your own Google Drive https://docs.google.com/spreadsheets/d/1wWHhDnKePdSdRBt1qGvKayIgTYZKaf1h3W5R5Kq6drQ/edit?usp=sharing
+* Create a new spreadsheet in your Google Drive account. The DCA Bot will automatically create worksheets for each market name (i.e. BTC-USD, ETH-USD)
 * Go to the Google APIs Console (https://console.developers.google.com/)
 * Create a new project
   * Enable the Google Drive API and Google Sheets API
