@@ -1,9 +1,6 @@
 #!/usr/bin/env python
-
 import argparse
 import boto3
-import botocore
-import binascii
 import configparser
 import datetime
 import json
@@ -284,17 +281,16 @@ if __name__ == "__main__":
         # if we find one append, if we do not then create a new worksheet with the buy/pair
         worksheet_list = client.open_by_key(google_spreadsheet_key).worksheets()
         # iterate through the worksheets and try to find market_name
-        match_found = False
+        sheet = None
         if len(worksheet_list):
           for worksheet in worksheet_list:
             print(f"worksheet.title {worksheet.title}, market_name {market_name}")
             if worksheet.title == market_name:
-              match_found = True
+              print('worksheet match found, appending row')
+              sheet = worksheet
+              break
 
-        if match_found:
-          print('worksheet match found, appending row')
-          sheet = worksheet
-        else:
+        if not sheet:
           print('worksheet match not found, creating worksheet')
           sheet = add_worksheet(client,google_spreadsheet_key, market_name)
 
