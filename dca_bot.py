@@ -11,6 +11,7 @@ from decimal import Decimal
 import cbpro
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+from retrying import retry
 
 DEFAULT_ROWS = "1000"
 DEFAULT_COLUMNS = "11"
@@ -21,6 +22,20 @@ SANDBOX_URL = "https://api-public.sandbox.pro.coinbase.com"
 def get_timestamp():
   ts = time.time()
   return datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+
+# why the retry? for some reason the coinbase pro sandbox sometimes does not return the BTC-USD pair that is necessary for sandbox testing
+@retry(stop_max_attempt_number=15, wait_fixed=3000)
+def retrieve_market_name(public_client, market_name):
+  products = public_client.get_products()
+  #print(json.dumps(products, sort_keys=True, indent=4))
+  # find the product.
+  try:
+    product = [item for item in products if item['id'] == market_name][0]
+  except Exception as e:
+    msg = f"{market_name} not found. Available markets: {[prod['id'] for prod in products]} this can be normal if you are running in sandbox mode."
+    print(msg)
+    raise KeyError(msg)
+  return product
 
 def add_worksheet(client, google_spreadsheet_key, worksheet_name):
   # add the worksheet
@@ -139,21 +154,8 @@ if __name__ == "__main__":
     # Use the sandbox API (requires a different set of API access credentials)
     private_client = cbpro.AuthenticatedClient(key, secret, passphrase, api_url=SANDBOX_URL if args.sandbox_mode else None)
     public_client = cbpro.PublicClient(api_url=SANDBOX_URL if args.sandbox_mode else None)
-    product = None
     # Retrieve dict of trading pair info https://docs.pro.coinbase.com/#get-single-product
-    try:
-      products = public_client.get_products()
-      # find the product
-      product = [item for item in products if item['id'] == market_name][0]
-    except Exception as e:
-      print("Unexpected error: %s" % e)
-
-    if product is None:
-        raise KeyError(
-            f"{market_name} not found. Available markets: {[prod['id'] for prod in products]}"
-            f""
-            f" this can be normal if you are running in sandbox mode.")
-
+    product = retrieve_market_name(public_client, market_name)
     print(product)
     assert product['id'] == market_name
     base_currency = product.get("base_currency")
@@ -294,7 +296,7 @@ if __name__ == "__main__":
           print('worksheet match not found, creating worksheet')
           sheet = add_worksheet(client,google_spreadsheet_key, market_name)
 
-        row = [order["product_id"],order["specified_funds"],order["funds"],order["fill_fees"],order["filled_size"],market_price,order["side"],order["done_reason"],config_section,order["status"],order["created_at"]]
+        row = [order["product_id"],funds if funds else size,order["funds"],order["fill_fees"],order["filled_size"],market_price,order["side"],order["done_reason"],config_section,order["status"],order["created_at"]]
         append_res = sheet.append_row(row)
         print(append_res)
       except Exception as e:

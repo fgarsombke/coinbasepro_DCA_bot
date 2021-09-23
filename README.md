@@ -3,8 +3,10 @@ A basic Coinbase Pro buying bot that completes trades in any of their available 
 
 Relies on https://github.com/danpaquin/coinbasepro-python.git.
 
+Originally forked from https://github.com/kdmukai/gdax_bot. All credit due there. This cut is a cleanup with added functionality.
+
 ## Dollar Cost Averaging
-You have to be extremely lucky or extremely good to time the market perfectly. Rather than trying to achieve the perfect timing for when to execute a purchase just set up your investment on a regular schedule. Buy X amount every Y days. Sometimes the market will be up, sometimes down. But over time your cache will more closely reflect the average market price with volatile peaks and valleys averaged out.
+Rather than trying to achieve the perfect timing for when to execute a purchase just set up your investment on a regular schedule. Buy X amount every Y days. Sometimes the market will be up, sometimes down. But over time your cache will more closely reflect the average market price with volatile peaks and valleys averaged out.
 
 This approach is common for retirement accounts; you invest a fixed amount into your 401(k) every month and trust that the market trend will be overall up over time.
 
@@ -37,7 +39,6 @@ Update `settings.conf.example` with your API key info in the "sandbox" section. 
 This is out of scope for this document, but generate a set of AWS access keys and a new SNS topic to enable the bot to send email reports.
 
 Set these values in the `settings-local.conf` file if the SNS topic was created
-
 ```
 SNS_TOPIC = arn:aws:sns:us-east-1:account_id:topicname
 AWS_ACCESS_KEY_ID = access_key
@@ -57,17 +58,18 @@ To programmatically access your spreadsheet, you’ll need to create a service a
   * Find the client_email inside client_secret.json file. In your spreadsheet, click the "Share" button at the top right and share to the client_email with Editor privledges
 
 * Set this value in the `settings-local.conf` with the key of the Google spreadsheet that was created
-```
-GOOGLE_SPREADSHEET_KEY=key_of_google_spreadsheet (i.e. 1KArbyA-s2IJwxP6zqazZ3IzkLNFHBFzek9HLziB6ITw)
-```
+
+`GOOGLE_SPREADSHEET_KEY=key_of_google_spreadsheet (i.e. 1KArbyA-s2IJwxP6zqazZ3IzkLNFHBFzek9HLziB6ITw`
 
 #### Try a basic test run
-Run against the Coinbase Pro sandbox by including the `-sandbox` flag. Remember that the sandbox is just test data. The sandbox only supports BTC trading.
+Run against the Coinbase Pro sandbox by including the `-sandbox` flag. Remember that the sandbox is just test data.
+
+The sandbox only supports BTC trading.
 
 Try a basic buy of $100 USD worth of BTC:
-```
-python3 dca_bot.py BTC-USD BUY 100 USD -sandbox -c settings-local.conf
-```
+
+`python3 dca_bot.py BTC-USD BUY 100 USD -sandbox -c settings-local.conf`
+
 Check the sandbox UI and you'll see your order listed.
 
 ### Usage
