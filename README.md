@@ -68,7 +68,7 @@ The sandbox only supports BTC trading.
 
 Try a basic buy of $100 USD worth of BTC:
 
-`python3 dca_bot.py BTC-USD BUY 100 USD -sandbox -c settings-local.conf`
+`python3 dca_bot.py BTC-USD BUY 100 USD -sandbox -c settings-local.conf -s client_secret.json (optional, for google spreadsheet only)`
 
 Check the sandbox UI and you'll see your order listed.
 
