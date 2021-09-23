@@ -1,7 +1,7 @@
 # dca_bot
 A basic Coinbase Pro buying bot that completes trades in any of their available market pairings
 
-Relies on [gdax-python](https://github.com/danpaquin/gdax-python). Props to [danpaquin](https://github.com/danpaquin) and thanks!
+Relies on https://github.com/danpaquin/coinbasepro-python.git.
 
 ## Trading Philosophy
 ### Basic investing strategy: Dollar Cost Averaging
@@ -125,7 +125,6 @@ Edit the crontab:
 ```
 crontab -e
 ```
-
 View the current crontab:
 ```
 crontab -l

@@ -1,1 +1,1 @@
-git+git://github.com/teleprint-me/coinbasepro-python.git
+git+git://github.com/danpaquin/coinbasepro-python.git
