@@ -3,14 +3,10 @@ A basic Coinbase Pro buying bot that completes trades in any of their available 
 
 Relies on https://github.com/danpaquin/coinbasepro-python.git.
 
-## Trading Philosophy
-### Basic investing strategy: Dollar Cost Averaging
+## Dollar Cost Averaging
 You have to be extremely lucky or extremely good to time the market perfectly. Rather than trying to achieve the perfect timing for when to execute a purchase just set up your investment on a regular schedule. Buy X amount every Y days. Sometimes the market will be up, sometimes down. But over time your cache will more closely reflect the average market price with volatile peaks and valleys averaged out.
 
 This approach is common for retirement accounts; you invest a fixed amount into your 401(k) every month and trust that the market trend will be overall up over time.
-
-### Micro Dollar Cost Averaging for cryptos
-While I believe strongly in dollar cost averaging, the crypto world is so volatile that making a single, regular buy once a month is still leaving too much to chance. The market can swing 30%, 50%, even 100%+ in a single day. I'd rather invest $20 every day for a month than agonize over deciding on just the right time to do a single $600 buy.
 
 ## Technical Details
 ### Basic approach
