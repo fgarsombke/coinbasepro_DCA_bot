@@ -139,42 +139,40 @@ if __name__ == "__main__":
     sns_topic = config.get(config_section, 'SNS_TOPIC')
     aws_region = config.get(config_section, 'AWS_REGION')
     google_spreadsheet_key = config.get(config_section, 'GOOGLE_SPREADSHEET_KEY')
-
-    # Instantiate public and auth API clients
-    auth = cbpro.Auth(key, secret, passphrase)
     # Use the sandbox API (requires a different set of API access credentials)
-    messenger = cbpro.Messenger(auth=auth, url=SANDBOX_URL if args.sandbox_mode else None)
-    public_client = cbpro.PublicClient(messenger)
-    private_client = cbpro.PrivateClient(messenger)
-
+    private_client = cbpro.AuthenticatedClient(key, secret, passphrase, api_url=SANDBOX_URL if args.sandbox_mode else None)
+    public_client = cbpro.PublicClient(api_url=SANDBOX_URL if args.sandbox_mode else None)
+    product = None
     # Retrieve dict of trading pair info https://docs.pro.coinbase.com/#get-single-product
     try:
-        product = public_client.products.get(market_name)
-    except binascii.Error as e:
-        raise ValueError(f'Did you set your API secrets?') from e
+      products = public_client.get_products()
+      # find the product
+      product = [item for item in products if item['id'] == market_name][0]
+    except Exception as e:
+      print("Unexpected error: %s" % e)
 
-    if product.get('message') == 'NotFound':
+    if product is None:
         raise KeyError(
-            f"{market_name} not found. Available markets: {[prod['id'] for prod in public_client.products.list()]}"
+            f"{market_name} not found. Available markets: {[prod['id'] for prod in products]}"
             f""
-            f"this can be normal if you are running in sandbox mode.")
+            f" this can be normal if you are running in sandbox mode.")
 
     print(product)
     assert product['id'] == market_name
     base_currency = product.get("base_currency")
     quote_currency = product.get("quote_currency")
-    base_min_size = Decimal(product.get("base_min_size")).normalize()
     base_increment = Decimal(product.get("base_increment")).normalize()
     quote_increment = Decimal(product.get("quote_increment")).normalize()
+    funds = None
+    size = None
     if amount_currency == product.get("quote_currency"):
-        amount_currency_is_quote_currency = True
+        funds=float(amount.quantize(quote_increment))
     elif amount_currency == product.get("base_currency"):
-        amount_currency_is_quote_currency = False
+        size=float(amount.quantize(base_increment))
     else:
         raise Exception(f"amount_currency {amount_currency} not in market {market_name}")
     print(json.dumps(product, indent=2))
 
-    print(f"base_min_size: {base_min_size}")
     print(f"quote_increment: {quote_increment}")
 
     # Prep boto SNS client for email notifications
@@ -185,21 +183,11 @@ if __name__ == "__main__":
          aws_secret_access_key=aws_secret_access_key,
          region_name=aws_region
       )
-
-    model = cbpro.PrivateModel()
-    # construct order request
-    if amount_currency_is_quote_currency:
-        request = model.orders.market(side=order_side, product_id=market_name,
-                                      funds=float(amount.quantize(quote_increment))
-                                      )
-    else:
-        request = model.orders.market(side=order_side, product_id=market_name,
-                                      size=float(amount.quantize(base_increment))
-                                      )
-
-    # make order
-    response = private_client.orders.post(request)
-
+    # make market order
+    response = private_client.place_market_order(product_id=market_name,
+                               side=order_side,
+                               funds=funds if funds else None,
+                               size=size if size else None)
     print(json.dumps(response, sort_keys=True, indent=4))
 
     if "message" in response:
@@ -218,7 +206,6 @@ if __name__ == "__main__":
     order = response
     order_id = response["id"]
     print(f"order_id: {order_id}")
-
     '''
         Wait to see if the order was fulfilled.
     '''
@@ -239,8 +226,8 @@ if __name__ == "__main__":
             f"{get_timestamp()}: Order {order_id} still {order['status']}. Sleeping for {wait_time} (total {total_wait_time})")
         time.sleep(wait_time)
         total_wait_time += wait_time
-        order = private_client.orders.get(order_id)
-        # print(json.dumps(order, sort_keys=True, indent=4))
+        order = private_client.get_order(order_id)
+        print(json.dumps(order, sort_keys=True, indent=4))
 
         if "message" in order and order["message"] == "NotFound":
             # Most likely the order was manually cancelled in the UI
@@ -265,7 +252,7 @@ if __name__ == "__main__":
            Subject='Coinbase Pro order failed due to done reason ' + done_reason,
            Message=json.dumps(order, sort_keys=True, indent=4)
           )
-       except botocore.exceptions.ClientError as e:
+       except Exception as e:
          print("Unexpected error: %s" % e)
       exit()
 
@@ -280,7 +267,7 @@ if __name__ == "__main__":
          Subject=subject,
          Message=json.dumps(order, sort_keys=True, indent=4)
         )
-      except botocore.exceptions.ClientError as e:
+      except Exception as e:
         print("Unexpected error: %s" % e)
    
     if google_spreadsheet_key:
