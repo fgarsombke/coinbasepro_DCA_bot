@@ -22,8 +22,6 @@ dca_bot submits a market price order for every coin pair.
 #### Install pip modules
 ```
 pip install -r requirements.txt
-pip install boto3
-pip install gspread oauth2client
 ```
 
 #### Create Coinbase Pro API key
@@ -74,7 +72,6 @@ Try a basic buy of $100 USD worth of BTC:
 ```
 python3 dca_bot.py BTC-USD BUY 100 USD -sandbox -c settings-local.conf
 ```
-
 Check the sandbox UI and you'll see your order listed.
 
 ### Usage

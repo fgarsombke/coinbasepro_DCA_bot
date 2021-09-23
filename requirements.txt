@@ -1,1 +1,4 @@
 git+git://github.com/danpaquin/coinbasepro-python.git
+boto3
+gspread
+oauth2client
