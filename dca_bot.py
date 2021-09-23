@@ -208,7 +208,7 @@ if __name__ == "__main__":
           sns.publish(
              TargetArn=sns_topic,
              Subject=f"Could not place {market_name} {order_side} order",
-             Message=json.dumps(result, sort_keys=True, indent=4)
+             Message=json.dumps(response, sort_keys=True, indent=4)
           )
         exit()
 
@@ -248,7 +248,7 @@ if __name__ == "__main__":
               sns.publish(
                  TargetArn=sns_topic,
                  Subject=f"{market_name} {order_side} order of {amount} {amount_currency} CANCELLED",
-                 Message=json.dumps(result, sort_keys=True, indent=4)
+                 Message=json.dumps(order, sort_keys=True, indent=4)
               )
             exit()
 
