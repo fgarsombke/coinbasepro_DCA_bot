@@ -17,7 +17,8 @@ DEFAULT_ROWS = "1000"
 DEFAULT_COLUMNS = "11"
 DONE_REASON_FILLED = "filled"
 
-SANDBOX_URL = "https://api-public.sandbox.pro.coinbase.com"
+COINBASE_PRO_SANDBOX_URL = "https://api-public.sandbox.pro.coinbase.com"
+COINBASE_PRO_URL = "https://api.pro.coinbase.com"
 
 def get_timestamp():
   ts = time.time()
@@ -152,8 +153,8 @@ if __name__ == "__main__":
     aws_region = config.get(config_section, 'AWS_REGION')
     google_spreadsheet_key = config.get(config_section, 'GOOGLE_SPREADSHEET_KEY')
     # Use the sandbox API (requires a different set of API access credentials)
-    private_client = cbpro.AuthenticatedClient(key, secret, passphrase, api_url=SANDBOX_URL if args.sandbox_mode else None)
-    public_client = cbpro.PublicClient(api_url=SANDBOX_URL if args.sandbox_mode else None)
+    private_client = cbpro.AuthenticatedClient(key, secret, passphrase, api_url=COINBASE_PRO_SANDBOX_URL if args.sandbox_mode else COINBASE_PRO_URL)
+    public_client = cbpro.PublicClient(api_url=COINBASE_PRO_SANDBOX_URL if args.sandbox_mode else COINBASE_PRO_URL)
     # Retrieve dict of trading pair info https://docs.pro.coinbase.com/#get-single-product
     product = retrieve_market_name(public_client, market_name)
     print(product)
