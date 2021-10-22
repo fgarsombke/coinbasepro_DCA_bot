@@ -297,7 +297,7 @@ if __name__ == "__main__":
           print('worksheet match not found, creating worksheet')
           sheet = add_worksheet(client,google_spreadsheet_key, market_name)
 
-        row = [order["product_id"],funds if funds else size,order["funds"],order["fill_fees"],order["filled_size"],market_price,order["side"],order["done_reason"],config_section,order["status"],order["created_at"]]
+        row = [order["product_id"],funds if funds else size,round(float(order["funds"]),3),round(float(order["fill_fees"]),3),float(order["filled_size"]),market_price,order["side"],order["done_reason"],config_section,order["status"],order["created_at"]]
         append_res = sheet.append_row(row)
         print(append_res)
       except Exception as e:
