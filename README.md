@@ -35,6 +35,10 @@ While you're in the sandbox UI, fund your fiat account by transferring from the 
 #### Customize settings
 Update `settings.conf.example` with your API key info in the "sandbox" section. I recommend saving your version as `settings-local.conf` as that is already in the `.gitignore` so you don't have to worry about committing your sensitive info to your forked repo.
 
+#### Where to run your bot?
+
+The bot can be run on your local computer (desktop, laptop) or in any cloud provider. I set mine up in AWS using a nano EC2 instance. It's about $3/month. This way I don't have to think about keeping a local computer running so that the cronjob runs each day. 
+
 #### (Optional) Create an AWS Simple Notification System topic
 This is out of scope for this document, but generate a set of AWS access keys and a new SNS topic to enable the bot to send email reports.
 
