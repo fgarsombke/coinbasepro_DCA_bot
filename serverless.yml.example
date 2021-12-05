@@ -1,4 +1,7 @@
-service: dca-bot
+
+# MAKE EDITS HERE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+service: dca-bot-PUT_MARKET_NAME_HERE
+#< END MAKE EDITS HERE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 frameworkVersion: '2'
 
 provider:
