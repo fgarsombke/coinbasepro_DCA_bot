@@ -4,6 +4,8 @@ frameworkVersion: '2'
 provider:
   name: aws
   runtime: python3.9
+  memorySize: 100 # optional, in MB, default is 1024
+  timeout: 20 # optional, in seconds, default is 6
   lambdaHashingVersion: 20201221
   stage: ${opt:stage}
   region: us-east-1

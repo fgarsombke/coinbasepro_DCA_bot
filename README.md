@@ -134,5 +134,9 @@ crontab -l
 Install serverless, make sure you have the correct aws creds in ENV, Copy the serverless.yml.example file to a serverless.yml file and edit it, deploy:
 
 ```
-serverless deploy --config serverless-BTC.yml --verbose --stage sandbox OR --stage prod
+serverless deploy --config serverless-BTC.yml --verbose --stage sandbox
+```
+OR 
+```
+serverless deploy --config serverless-BTC.yml --verbose --stage prod
 ```
