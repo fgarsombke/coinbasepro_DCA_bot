@@ -135,8 +135,14 @@ Install serverless, make sure you have the correct aws creds in ENV, Copy the se
 
 ```
 serverless deploy --config serverless-BTC.yml --verbose --stage sandbox
+serverless deploy --config serverless-ETH.yml --verbose --stage sandbox
+serverless deploy --config serverless-MATIC.yml --verbose --stage sandbox
+serverless deploy --config serverless-LINK.yml --verbose --stage sandbox
 ```
 OR 
 ```
 serverless deploy --config serverless-BTC.yml --verbose --stage prod
+serverless deploy --config serverless-ETH.yml --verbose --stage sandbox
+serverless deploy --config serverless-MATIC.yml --verbose --stage sandbox
+serverless deploy --config serverless-LINK.yml --verbose --stage sandbox
 ```
