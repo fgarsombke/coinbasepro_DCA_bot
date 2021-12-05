@@ -1,0 +1,22 @@
+{
+  "name": "coinbasepro_dca_bot",
+  "version": "1.0.0",
+  "description": "A basic Coinbase Pro buying bot that completes trades in any of their available market pairings",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fgarsombke/coinbasepro_DCA_bot.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/fgarsombke/coinbasepro_DCA_bot/issues"
+  },
+  "homepage": "https://github.com/fgarsombke/coinbasepro_DCA_bot#readme",
+  "dependencies": {
+    "serverless-python-requirements": "^5.2.2"
+  }
+}

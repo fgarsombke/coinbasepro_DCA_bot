@@ -4,10 +4,17 @@ cron*
 settings.conf
 settings.local.conf
 settings-local.conf
-client_secret.json
+*client_secret.json
+serverless*.yml
+
 
 *.bat
 
 .idea/*
 
 coinbasepro_DCA_bot.iml
+
+node_modules/
+
+# Serverless directories
+.serverless/

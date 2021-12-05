@@ -49,6 +49,212 @@ def add_worksheet(client, google_spreadsheet_key, worksheet_name):
   sheet.freeze(1);
   return sheet
 
+def executePurchase(args):
+  market_name = args['market_name']
+  order_side = args['order_side'].lower()
+  amount = args['amount']
+  amount_currency = args['amount_currency']
+
+  sandbox_mode = args['sandbox_mode']
+  job_mode = args['job_mode']
+  warn_after = args['warn_after']
+
+  if not sandbox_mode and not job_mode:
+    if sys.version_info[0] < 3:
+      # python2.x compatibility
+      response = raw_input("Production purchase! Confirm [Y]: ")  # noqa: F821
+    else:
+      response = input("Production purchase! Confirm [Y]: ")
+    if response != 'Y':
+      print("Exiting without submitting purchase.")
+      exit()
+
+  # Read settings
+  config = configparser.ConfigParser()
+  config.read(args['config_file'])
+
+  config_section = 'production'
+  if sandbox_mode:
+    config_section = 'sandbox'
+  key = config.get(config_section, 'API_KEY')
+  passphrase = config.get(config_section, 'PASSPHRASE')
+  secret = config.get(config_section, 'SECRET_KEY')
+  aws_access_key_id = config.get(config_section, 'AWS_ACCESS_KEY_ID')
+  aws_secret_access_key = config.get(config_section, 'AWS_SECRET_ACCESS_KEY')
+  sns_topic = config.get(config_section, 'SNS_TOPIC')
+  aws_region = config.get(config_section, 'AWS_REGION')
+  google_spreadsheet_key = config.get(config_section, 'GOOGLE_SPREADSHEET_KEY')
+  # Use the sandbox API (requires a different set of API access credentials)
+  private_client = cbpro.AuthenticatedClient(key, secret, passphrase, api_url=COINBASE_PRO_SANDBOX_URL if sandbox_mode else COINBASE_PRO_URL)
+  public_client = cbpro.PublicClient(api_url=COINBASE_PRO_SANDBOX_URL if sandbox_mode else COINBASE_PRO_URL)
+  # Retrieve dict of trading pair info https://docs.pro.coinbase.com/#get-single-product
+  product = retrieve_market_name(public_client, market_name)
+  print(product)
+  assert product['id'] == market_name
+  base_currency = product.get("base_currency")
+  quote_currency = product.get("quote_currency")
+  base_increment = Decimal(product.get("base_increment")).normalize()
+  quote_increment = Decimal(product.get("quote_increment")).normalize()
+  funds = None
+  size = None
+  if amount_currency == product.get("quote_currency"):
+    funds=float(amount.quantize(quote_increment))
+  elif amount_currency == product.get("base_currency"):
+    size=float(amount.quantize(base_increment))
+  else:
+    raise Exception(f"amount_currency {amount_currency} not in market {market_name}")
+  print(json.dumps(product, indent=2))
+
+  print(f"quote_increment: {quote_increment}")
+
+  # Prep boto SNS client for email notifications
+  if sns_topic:
+    sns = boto3.client(
+        "sns",
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+        region_name=aws_region
+    )
+  # make market order
+  response = private_client.place_market_order(product_id=market_name,
+                              side=order_side,
+                              funds=funds if funds else None,
+                              size=size if size else None)
+  print(json.dumps(response, sort_keys=True, indent=4))
+
+  if "message" in response:
+    # Something went wrong if there's a 'message' field in response
+    if sns:
+      sns.publish(
+          TargetArn=sns_topic,
+          Subject=f"Could not place {market_name} {order_side} order",
+          Message=json.dumps(response, sort_keys=True, indent=4)
+      )
+    exit()
+
+  if response and "status" in response and response["status"] == "rejected":
+    print(f"{get_timestamp()}: {market_name} Order rejected")
+
+  order = response
+  order_id = response["id"]
+  print(f"order_id: {order_id}")
+  '''
+      Wait to see if the order was fulfilled.
+  '''
+  wait_time = 5
+  total_wait_time = 0
+  while "status" in order and \
+          (order["status"] == "pending" or order["status"] == "open"):
+      if total_wait_time > warn_after:
+          if sns:
+            sns.publish(
+                TargetArn=sns_topic,
+                Subject=f"{market_name} {order_side} order of {amount} {amount_currency} OPEN/UNFILLED",
+                Message=json.dumps(order, sort_keys=True, indent=4)
+            )
+          exit()
+
+      print(
+          f"{get_timestamp()}: Order {order_id} still {order['status']}. Sleeping for {wait_time} (total {total_wait_time})")
+      time.sleep(wait_time)
+      total_wait_time += wait_time
+      order = private_client.get_order(order_id)
+      print(json.dumps(order, sort_keys=True, indent=4))
+
+      if "message" in order and order["message"] == "NotFound":
+          # Most likely the order was manually cancelled in the UI
+          if sns:
+            sns.publish(
+                TargetArn=sns_topic,
+                Subject=f"{market_name} {order_side} order of {amount} {amount_currency} CANCELLED",
+                Message=json.dumps(order, sort_keys=True, indent=4)
+            )
+          exit()
+
+  # Order status is no longer pending!
+  print(json.dumps(order, indent=2))
+  done_reason = order["done_reason"]
+  if done_reason != DONE_REASON_FILLED:
+    print('Coinbase Pro order failed due to done reason ' + done_reason)
+    # send email and fast fail
+    if sns:
+      try:
+        sns.publish(
+            TargetArn=sns_topic,
+            Subject='Coinbase Pro order failed due to done reason ' + done_reason,
+            Message=json.dumps(order, sort_keys=True, indent=4)
+          )
+      except Exception as e:
+        print("Unexpected error: %s" % e)
+    exit()
+
+  market_price = float((Decimal(order["executed_value"]) / Decimal(order["filled_size"])).quantize(quote_increment))
+
+  subject = f"{market_name} {order_side} order of {amount} {amount_currency} {order['status']} @ {market_price} {quote_currency}"
+  print(subject)
+  if sns:
+    try:
+      sns.publish(
+        TargetArn=sns_topic,
+        Subject=subject,
+        Message=json.dumps(order, sort_keys=True, indent=4)
+      )
+    except Exception as e:
+      print("Unexpected error: %s" % e)
+  
+  if google_spreadsheet_key:
+    print('writing to google spreadsheet') 
+    # use creds to create a client to interact with the Google Drive API
+    DEFAULT_SCOPES = [
+  'https://www.googleapis.com/auth/spreadsheets',
+  'https://www.googleapis.com/auth/drive',
+    ]
+    try: 
+      creds = ServiceAccountCredentials.from_json_keyfile_name(args['google_sheet_client_secret'], DEFAULT_SCOPES)
+      client = gspread.authorize(creds)
+      # find all of the worksheets and make sure there is one with the market_name (buy/pair)
+      # if we find one append, if we do not then create a new worksheet with the buy/pair
+      worksheet_list = client.open_by_key(google_spreadsheet_key).worksheets()
+      # iterate through the worksheets and try to find market_name
+      sheet = None
+      if len(worksheet_list):
+        for worksheet in worksheet_list:
+          print(f"worksheet.title {worksheet.title}, market_name {market_name}")
+          if worksheet.title == market_name:
+            print('worksheet match found, appending row')
+            sheet = worksheet
+            break
+
+      if not sheet:
+        print('worksheet match not found, creating worksheet')
+        sheet = add_worksheet(client,google_spreadsheet_key, market_name)
+
+      specified_funds = funds if funds else size
+      final_funds = round(float(order["funds"]),3)
+      fill_fees = round(float(order["fill_fees"]),3)
+      filled_size = float(order["filled_size"])
+
+      row = [ 
+        order["product_id"], 
+        specified_funds,
+        final_funds,
+        fill_fees,
+        filled_size,
+        market_price,
+        order["side"],
+        order["done_reason"],
+        config_section,
+        order["status"],
+        order["created_at"]
+      ]
+
+      append_res = sheet.append_row(row)
+      print(append_res)
+      return append_res
+    except Exception as e:
+      print("Unexpected error: %s" % e)
+      raise e
+
 """
     Basic Coinbase Pro DCA buy/sell bot that executes a market order.
     * Market orders can be issued for as little as $5 of value versus limit orders which
@@ -118,187 +324,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     print(f"{get_timestamp()}: STARTED: {args}")
 
-    market_name = args.market_name
-    order_side = args.order_side.lower()
-    amount = args.amount
-    amount_currency = args.amount_currency
+    executePurchase(vars(args))
 
-    sandbox_mode = args.sandbox_mode
-    job_mode = args.job_mode
-    warn_after = args.warn_after
-
-    if not sandbox_mode and not job_mode:
-        if sys.version_info[0] < 3:
-            # python2.x compatibility
-            response = raw_input("Production purchase! Confirm [Y]: ")  # noqa: F821
-        else:
-            response = input("Production purchase! Confirm [Y]: ")
-        if response != 'Y':
-            print("Exiting without submitting purchase.")
-            exit()
-
-    # Read settings
-    config = configparser.ConfigParser()
-    config.read(args.config_file)
-
-    config_section = 'production'
-    if sandbox_mode:
-        config_section = 'sandbox'
-    key = config.get(config_section, 'API_KEY')
-    passphrase = config.get(config_section, 'PASSPHRASE')
-    secret = config.get(config_section, 'SECRET_KEY')
-    aws_access_key_id = config.get(config_section, 'AWS_ACCESS_KEY_ID')
-    aws_secret_access_key = config.get(config_section, 'AWS_SECRET_ACCESS_KEY')
-    sns_topic = config.get(config_section, 'SNS_TOPIC')
-    aws_region = config.get(config_section, 'AWS_REGION')
-    google_spreadsheet_key = config.get(config_section, 'GOOGLE_SPREADSHEET_KEY')
-    # Use the sandbox API (requires a different set of API access credentials)
-    private_client = cbpro.AuthenticatedClient(key, secret, passphrase, api_url=COINBASE_PRO_SANDBOX_URL if args.sandbox_mode else COINBASE_PRO_URL)
-    public_client = cbpro.PublicClient(api_url=COINBASE_PRO_SANDBOX_URL if args.sandbox_mode else COINBASE_PRO_URL)
-    # Retrieve dict of trading pair info https://docs.pro.coinbase.com/#get-single-product
-    product = retrieve_market_name(public_client, market_name)
-    print(product)
-    assert product['id'] == market_name
-    base_currency = product.get("base_currency")
-    quote_currency = product.get("quote_currency")
-    base_increment = Decimal(product.get("base_increment")).normalize()
-    quote_increment = Decimal(product.get("quote_increment")).normalize()
-    funds = None
-    size = None
-    if amount_currency == product.get("quote_currency"):
-        funds=float(amount.quantize(quote_increment))
-    elif amount_currency == product.get("base_currency"):
-        size=float(amount.quantize(base_increment))
-    else:
-        raise Exception(f"amount_currency {amount_currency} not in market {market_name}")
-    print(json.dumps(product, indent=2))
-
-    print(f"quote_increment: {quote_increment}")
-
-    # Prep boto SNS client for email notifications
-    if sns_topic:
-      sns = boto3.client(
-         "sns",
-         aws_access_key_id=aws_access_key_id,
-         aws_secret_access_key=aws_secret_access_key,
-         region_name=aws_region
-      )
-    # make market order
-    response = private_client.place_market_order(product_id=market_name,
-                               side=order_side,
-                               funds=funds if funds else None,
-                               size=size if size else None)
-    print(json.dumps(response, sort_keys=True, indent=4))
-
-    if "message" in response:
-        # Something went wrong if there's a 'message' field in response
-        if sns:
-          sns.publish(
-             TargetArn=sns_topic,
-             Subject=f"Could not place {market_name} {order_side} order",
-             Message=json.dumps(response, sort_keys=True, indent=4)
-          )
-        exit()
-
-    if response and "status" in response and response["status"] == "rejected":
-        print(f"{get_timestamp()}: {market_name} Order rejected")
-
-    order = response
-    order_id = response["id"]
-    print(f"order_id: {order_id}")
-    '''
-        Wait to see if the order was fulfilled.
-    '''
-    wait_time = 5
-    total_wait_time = 0
-    while "status" in order and \
-            (order["status"] == "pending" or order["status"] == "open"):
-        if total_wait_time > warn_after:
-            if sns:
-              sns.publish(
-                 TargetArn=sns_topic,
-                 Subject=f"{market_name} {order_side} order of {amount} {amount_currency} OPEN/UNFILLED",
-                 Message=json.dumps(order, sort_keys=True, indent=4)
-              )
-            exit()
-
-        print(
-            f"{get_timestamp()}: Order {order_id} still {order['status']}. Sleeping for {wait_time} (total {total_wait_time})")
-        time.sleep(wait_time)
-        total_wait_time += wait_time
-        order = private_client.get_order(order_id)
-        print(json.dumps(order, sort_keys=True, indent=4))
-
-        if "message" in order and order["message"] == "NotFound":
-            # Most likely the order was manually cancelled in the UI
-            if sns:
-              sns.publish(
-                 TargetArn=sns_topic,
-                 Subject=f"{market_name} {order_side} order of {amount} {amount_currency} CANCELLED",
-                 Message=json.dumps(order, sort_keys=True, indent=4)
-              )
-            exit()
-
-    # Order status is no longer pending!
-    print(json.dumps(order, indent=2))
-    done_reason = order["done_reason"]
-    if done_reason != DONE_REASON_FILLED:
-      print('Coinbase Pro order failed due to done reason ' + done_reason)
-      # send email and fast fail
-      if sns:
-       try:
-        sns.publish(
-           TargetArn=sns_topic,
-           Subject='Coinbase Pro order failed due to done reason ' + done_reason,
-           Message=json.dumps(order, sort_keys=True, indent=4)
-          )
-       except Exception as e:
-         print("Unexpected error: %s" % e)
-      exit()
-
-    market_price = (Decimal(order["executed_value"]) / Decimal(order["filled_size"])).quantize(quote_increment)
-
-    subject = f"{market_name} {order_side} order of {amount} {amount_currency} {order['status']} @ {market_price} {quote_currency}"
-    print(subject)
-    if sns:
-      try:
-        sns.publish(
-         TargetArn=sns_topic,
-         Subject=subject,
-         Message=json.dumps(order, sort_keys=True, indent=4)
-        )
-      except Exception as e:
-        print("Unexpected error: %s" % e)
    
-    if google_spreadsheet_key:
-      print('writing to google spreadsheet') 
-      # use creds to create a client to interact with the Google Drive API
-      DEFAULT_SCOPES = [
-    'https://www.googleapis.com/auth/spreadsheets',
-    'https://www.googleapis.com/auth/drive',
-      ]
-      try: 
-        creds = ServiceAccountCredentials.from_json_keyfile_name(args.google_sheet_client_secret, DEFAULT_SCOPES)
-        client = gspread.authorize(creds)
-        # find all of the worksheets and make sure there is one with the market_name (buy/pair)
-        # if we find one append, if we do not then create a new worksheet with the buy/pair
-        worksheet_list = client.open_by_key(google_spreadsheet_key).worksheets()
-        # iterate through the worksheets and try to find market_name
-        sheet = None
-        if len(worksheet_list):
-          for worksheet in worksheet_list:
-            print(f"worksheet.title {worksheet.title}, market_name {market_name}")
-            if worksheet.title == market_name:
-              print('worksheet match found, appending row')
-              sheet = worksheet
-              break
-
-        if not sheet:
-          print('worksheet match not found, creating worksheet')
-          sheet = add_worksheet(client,google_spreadsheet_key, market_name)
-
-        row = [order["product_id"],funds if funds else size,round(float(order["funds"]),3),round(float(order["fill_fees"]),3),float(order["filled_size"]),market_price,order["side"],order["done_reason"],config_section,order["status"],order["created_at"]]
-        append_res = sheet.append_row(row)
-        print(append_res)
-      except Exception as e:
-        print("Unexpected error: %s" % e)

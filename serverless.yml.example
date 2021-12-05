@@ -1,0 +1,67 @@
+service: dca-bot
+frameworkVersion: '2'
+
+provider:
+  name: aws
+  runtime: python3.9
+  lambdaHashingVersion: 20201221
+  stage: ${opt:stage}
+  region: us-east-1
+
+package:
+  exclude:
+    - .gitignore
+    - .github
+    - __tests__/**
+    - fixtures/**
+    - setupJest.js
+    - 'README.md'
+    - '*.iml'
+    - '*.example'
+
+functions:
+  buy:
+    handler: handler.buy
+    events:
+      # MAKE EDITS HERE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      # Run at 0:00 UTC every day
+      - schedule: cron(0 0 * * ? *)
+      #< END MAKE EDITS HERE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    environment:
+      ENV: ${opt:stage}
+      # MAKE EDITS HERE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      MARKET_NAME: 'BTC-USD'
+      AMOUNT: 100
+      AMOUNT_CURRENCY: 'USD'
+      #< END MAKE EDITS HERE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+plugins:
+  - serverless-plugin-aws-alerts
+  - serverless-python-requirements
+
+custom:
+  alarmSnsTopic:
+    # MAKE EDITS HERE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    sandbox: arn:aws:sns:dfdfdfdf
+    prod: arn:aws:sns:us-east-1:sdsdf
+    #< END MAKE EDITS HERE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  alerts:
+    definitions:
+      watchLogError:
+        metric: watchLogError
+        threshold: 0
+        statistic: Sum
+        period: 60
+        evaluationPeriods: 1
+        datapointsToAlarm: 1
+        comparisonOperator: GreaterThanThreshold
+        pattern: '?ERROR'
+    topics:
+      alarm:
+        topic: ${self:custom.alarmSnsTopic.${opt:stage}}
+    alarms:
+      - functionErrors
+      - watchLogError
+
+
+  
