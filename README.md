@@ -58,7 +58,7 @@ To programmatically access your spreadsheet, you’ll need to create a service a
   * Create Credentials --> Service Account
     * Name the service account and grant it a Project Role of Editor
     * Add Key --> Create New Key
-    * Download the JSON file and name it [sandbox|prod]_client_secret.json and put into your working script directory 
+    * Download the JSON file and name it `[sandbox|prod]_client_secret.json` and put into your working script directory 
   * Find the client_email inside client_secret.json file. In your spreadsheet, click the "Share" button at the top right and share to the client_email with Editor privledges
 
 * Set this value in the `settings-local.conf` with the key of the Google spreadsheet that was created
