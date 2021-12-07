@@ -16,7 +16,11 @@ from retrying import retry
 DEFAULT_ROWS = "1000"
 DEFAULT_COLUMNS = "11"
 DONE_REASON_FILLED = "filled"
-
+# use creds to create a client to interact with the Google Drive API
+DEFAULT_SCOPES = [
+    'https://www.googleapis.com/auth/spreadsheets',
+    'https://www.googleapis.com/auth/drive',
+]
 COINBASE_PRO_SANDBOX_URL = "https://api-public.sandbox.pro.coinbase.com"
 COINBASE_PRO_URL = "https://api.pro.coinbase.com"
 
@@ -58,6 +62,8 @@ def executePurchase(args):
   sandbox_mode = args['sandbox_mode']
   job_mode = args['job_mode']
   warn_after = args['warn_after']
+
+  environment = "sandbox" if sandbox_mode else "prod"
 
   if not sandbox_mode and not job_mode:
     if sys.version_info[0] < 3:
@@ -190,7 +196,7 @@ def executePurchase(args):
 
   market_price = float((Decimal(order["executed_value"]) / Decimal(order["filled_size"])).quantize(quote_increment))
 
-  subject = f"{market_name} {order_side} order of {amount} {amount_currency} {order['status']} @ {market_price} {quote_currency}"
+  subject = f"{market_name} {order_side} order of {amount} {amount_currency} {order['status']} @ {market_price} {quote_currency} for environment {environment}"
   print(subject)
   if sns:
     try:
@@ -201,16 +207,18 @@ def executePurchase(args):
       )
     except Exception as e:
       print("Unexpected error: %s" % e)
-  
-  if google_spreadsheet_key:
+
+  google_spreadsheet_found = True
+
+  try:
+    creds = ServiceAccountCredentials.from_json_keyfile_name(args['google_sheet_client_secret'], DEFAULT_SCOPES)
+  except FileNotFoundError as fnfe:
+    print("google spreadsheet not found")
+    google_spreadsheet_found = False
+
+  if google_spreadsheet_key and google_spreadsheet_found:
     print('writing to google spreadsheet') 
-    # use creds to create a client to interact with the Google Drive API
-    DEFAULT_SCOPES = [
-  'https://www.googleapis.com/auth/spreadsheets',
-  'https://www.googleapis.com/auth/drive',
-    ]
-    try: 
-      creds = ServiceAccountCredentials.from_json_keyfile_name(args['google_sheet_client_secret'], DEFAULT_SCOPES)
+    try:
       client = gspread.authorize(creds)
       # find all of the worksheets and make sure there is one with the market_name (buy/pair)
       # if we find one append, if we do not then create a new worksheet with the buy/pair
@@ -254,7 +262,7 @@ def executePurchase(args):
     except Exception as e:
       print("Unexpected error: %s" % e)
       raise e
-
+  return order
 """
     Basic Coinbase Pro DCA buy/sell bot that executes a market order.
     * Market orders can be issued for as little as $5 of value versus limit orders which

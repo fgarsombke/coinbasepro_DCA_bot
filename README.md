@@ -37,7 +37,7 @@ Update `settings.conf.example` with your API key info in the "sandbox" section. 
 
 #### Where to run your bot?
 
-The bot can be run on your local computer (desktop, laptop) or in any cloud provider. I set mine up in AWS using a nano EC2 instance. It's about $3/month. This way I don't have to think about keeping a local computer running so that the cronjob runs each day. 
+The bot can be run on your local computer (desktop, laptop) or in any cloud provider. Initially I set mine up in AWS using a nano EC2 instance. It's about $3/month. This way I don't have to think about keeping a local computer running so that the cronjob runs each day. I then found out if you use a Lambda on AWS (deployed through serverless) the cost is essentially close to free!!! 
 
 #### (Optional) Create an AWS Simple Notification System topic
 This is out of scope for this document, but generate a set of AWS access keys and a new SNS topic to enable the bot to send email reports.
@@ -58,7 +58,7 @@ To programmatically access your spreadsheet, you’ll need to create a service a
   * Create Credentials --> Service Account
     * Name the service account and grant it a Project Role of Editor
     * Add Key --> Create New Key
-    * Download the JSON file and name it client_secret.json and put into your working script directory 
+    * Download the JSON file and name it [sandbox|prod]_client_secret.json and put into your working script directory 
   * Find the client_email inside client_secret.json file. In your spreadsheet, click the "Share" button at the top right and share to the client_email with Editor privledges
 
 * Set this value in the `settings-local.conf` with the key of the Google spreadsheet that was created
@@ -72,7 +72,7 @@ The sandbox only supports BTC trading.
 
 Try a basic buy of $100 USD worth of BTC:
 
-`python3 dca_bot.py BTC-USD BUY 100 USD -sandbox -c settings-local.conf -s client_secret.json (optional, for google spreadsheet only)`
+`python3 dca_bot.py BTC-USD BUY 100 USD -sandbox -c settings-local.conf -s [sandbox|prod]_client_secret.json (optional, for google spreadsheet only)`
 
 Check the sandbox UI and you'll see your order listed.
 
@@ -129,18 +129,39 @@ View the current crontab:
 crontab -l
 ```
 
-### Scheduling with lambda
+### Scheduling with lambda. It's close to FREE!!!
 
-Install serverless, make sure you have the correct aws creds in ENV, Copy the serverless.yml.example file to a serverless.yml file and edit it, deploy:
+If you use Lambda on AWS, the cost is close to free!!!
 
-Not all markets work in sandbox, BTC does
+Install serverless, make sure you have the correct aws creds in ENV, Copy the serverless.example.yml file to a serverless.yml file and edit it
+
+Install the serverless plugins
+
 ```
-serverless deploy --config serverless-BTC.yml --verbose --stage sandbox
+npm i serverless-plugin-aws-alerts
+```
+
+To deploy:
+
+Not all markets work in sandbox, BTC does.
+
+Use the `--aws-profile` flag to use a different AWS credential other than the default
+```
+serverless deploy --config serverless.yml --verbose --stage sandbox --aws-profile dca_bot
 ```
 OR 
 ```
-serverless deploy --config serverless-BTC.yml --verbose --stage prod
-serverless deploy --config serverless-ETH.yml --verbose --stage sandbox
-serverless deploy --config serverless-MATIC.yml --verbose --stage sandbox
-serverless deploy --config serverless-LINK.yml --verbose --stage sandbox
+serverless deploy --config serverless.yml --verbose --stage prod --aws-profile dca_bot
 ```
+Once deployed this can be tested in the Lambda console with the JSON
+```
+[
+ {
+  "market_name": "BTC-USD",
+  "amount": 100,
+  "amount_currency": "USD"
+ }
+]
+```
+
+The EventBridge will have the scheduled rule.

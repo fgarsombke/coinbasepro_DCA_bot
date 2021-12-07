@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/fgarsombke/coinbasepro_DCA_bot#readme",
   "dependencies": {
+    "serverless-plugin-aws-alerts": "^1.7.4",
     "serverless-python-requirements": "^5.2.2"
   }
 }

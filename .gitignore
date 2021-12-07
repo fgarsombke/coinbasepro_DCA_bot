@@ -5,7 +5,7 @@ settings.conf
 settings.local.conf
 settings-local.conf
 *client_secret.json
-serverless*.yml
+serverless.yml
 
 
 *.bat

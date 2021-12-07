@@ -1,0 +1,64 @@
+service: dca-bot
+frameworkVersion: '2'
+
+provider:
+  name: aws
+  runtime: python3.8
+  memorySize: 128 # optional, in MB, default is 1024
+  timeout: 300 # optional, in seconds, default is 6
+  lambdaHashingVersion: 20201221
+  stage: ${opt:stage}
+  region: us-east-1
+
+package:
+  exclude:
+    - .gitignore
+    - .github
+    - __tests__/**
+    - fixtures/**
+    - setupJest.js
+    - 'README.md'
+    - '*.iml'
+    - '*.example'
+
+functions:
+  buy:
+    handler: handler.buy
+    events:
+      - schedule:
+          # MAKE EDITS HERE
+          # - schedule: Run at 12:00 UTC every day
+          #   input: [{"marketName":"BTC-USD","amount":100,"amountCurrency":"USD"}] (e.g. BTC-USD, ETH-BTC, etc), the quantity to buy or sell in the amount_currency, the currency the amount is denominated in
+          # !Not all markets work in sandbox!, BTC always does.
+          rate: cron(0 12 * * ? *)
+          input: '[{"market_name":"BTC-USD","amount":100,"amount_currency":"USD"}]'
+    environment:
+      ENV: ${opt:stage}
+
+plugins:
+  - serverless-plugin-aws-alerts
+  - serverless-python-requirements
+
+# Remove this if do not want alarm on error
+custom:
+  alarmSnsTopic:
+    # MAKE EDITS HERE
+    sandbox: arn:aws:sns:us-east-1:[account#]:[sns name]
+    prod: arn:aws:sns:us-east-1:[account#]:[sns name]
+  alerts:
+    definitions:
+      watchLogError:
+        metric: watchLogError
+        threshold: 0
+        statistic: Sum
+        period: 60
+        evaluationPeriods: 1
+        datapointsToAlarm: 1
+        comparisonOperator: GreaterThanThreshold
+        pattern: '?ERROR'
+    topics:
+      alarm:
+        topic: ${self:custom.alarmSnsTopic.${opt:stage}}
+    alarms:
+      - functionErrors
+      - watchLogError

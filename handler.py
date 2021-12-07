@@ -12,17 +12,18 @@ def buy(event, context):
         'config_file': "settings-local.conf",
         'google_sheet_client_secret': f"{os.environ['ENV']}_client_secret.json"
     }
-
-    # Execute purchase  
-    args['market_name'] = os.environ['MARKET_NAME']
-    args['amount'] = Decimal(os.environ['AMOUNT'])
-    args['amount_currency'] = os.environ['AMOUNT_CURRENCY']
-
-    btc_response = executePurchase(args)
+    print ("event json input", json.dumps(event))
+    # Iterate through the purchases
+    for item in event:
+      print ("executing purchase for market name ", item['market_name'])
+      args['market_name'] = item['market_name']
+      args['amount'] = Decimal(item['amount'])
+      args['amount_currency'] = item['amount_currency']
+      btc_response = executePurchase(args)
+      print("executed purchase response", json.dumps(btc_response))
 
     response = {
-        "statusCode": 200,
-        "body": json.dumps(btc_response)
+        "statusCode": 200
     }
 
     return response
