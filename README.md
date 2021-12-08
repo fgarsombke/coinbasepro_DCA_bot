@@ -147,11 +147,11 @@ Not all markets work in sandbox, BTC does.
 
 Use the `--aws-profile` flag to use a different AWS credential other than the default
 ```
-serverless deploy --config serverless.yml --verbose --stage sandbox --aws-profile dca_bot
+serverless deploy --verbose --stage sandbox --aws-profile dca_bot
 ```
 OR 
 ```
-serverless deploy --config serverless.yml --verbose --stage prod --aws-profile dca_bot
+serverless deploy --verbose --stage prod --aws-profile dca_bot
 ```
 Once deployed this can be tested in the Lambda console with the JSON
 ```
