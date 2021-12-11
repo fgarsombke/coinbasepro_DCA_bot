@@ -24,6 +24,7 @@ package:
 functions:
   buy:
     handler: handler.buy
+    maximumRetryAttempts: 0
     events:
       - schedule:
           # MAKE EDITS HERE
