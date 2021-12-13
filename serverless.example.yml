@@ -33,6 +33,7 @@ functions:
           # !Not all markets work in sandbox!, BTC always does.
           rate: cron(0 12 * * ? *)
           input: '[{"market_name":"BTC-USD","amount":100,"amount_currency":"USD"}]'
+          enabled: true
     environment:
       ENV: ${opt:stage}
 
